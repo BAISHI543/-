@@ -4,9 +4,12 @@ import { AppService } from './app.service';
 import { ConfigModule } from './config/config.module';
 import { GeminiModule } from './gemini/gemini.module';
 import { StorageModule } from './storage/storage.module';
+import { DbModule } from './db/db.module';
+import { StoryboardModule } from './storyboard/storyboard.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
-  imports: [ConfigModule, GeminiModule, StorageModule],
+  imports: [ConfigModule, GeminiModule, StorageModule, DbModule, StoryboardModule, HealthModule],
   controllers: [AppController],
   providers: [AppService]
 })
