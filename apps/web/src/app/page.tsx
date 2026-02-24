@@ -71,6 +71,30 @@ export default function HomePage() {
     }
   }
 
+  async function render3(shotId: string) {
+    if (!data?.project?.project_id) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/projects/${data.project.project_id}/shots/${shotId}/render-3`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_id: data.project.project_id })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const json = (await res.json()) as any;
+      // After rendering, refetch project to show updated image paths.
+      const ref = await fetch(`${API_BASE}/api/projects/${data.project.project_id}`);
+      const refreshed = (await ref.json()) as ProjectResponse;
+      setData(refreshed);
+      return json;
+    } catch (e: any) {
+      setError(String(e?.message || e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main className="min-h-screen p-6">
       <div className="mx-auto max-w-5xl space-y-6">
@@ -147,9 +171,14 @@ export default function HomePage() {
                     <div className="font-medium">
                       {s.shot_id} · {s.duration_s}s
                     </div>
-                    <button className="rounded border px-3 py-1" disabled={loading} onClick={() => planKeyframes(s.shot_id)}>
-                      生成计划(start/middle/end)
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button className="rounded border px-3 py-1" disabled={loading} onClick={() => planKeyframes(s.shot_id)}>
+                        生成计划(start/middle/end)
+                      </button>
+                      <button className="rounded bg-black text-white px-3 py-1 disabled:opacity-50" disabled={loading} onClick={() => render3(s.shot_id)}>
+                        出图(3张)
+                      </button>
+                    </div>
                   </div>
                   <div className="text-sm text-gray-700">{s.scene_desc}</div>
                   <details className="text-sm">
