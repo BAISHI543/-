@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/anime-storyboard-tool.schema.json",
+  "title": "Anime Storyboard Tool Data Model",
+  "type": "object",
+  "definitions": {
+    "ID": { "type": "string", "minLength": 1 },
+    "ISODateTime": { "type": "string", "format": "date-time" },
+    "Ratio": { "type": "string", "enum": ["9:16", "16:9", "1:1"] },
+    "Status": { "type": "string", "enum": ["draft", "review", "locked", "final", "archived"] },
+
+    "Project": {
+      "type": "object",
+      "required": ["project_id", "title", "created_at", "updated_at", "target"],
+      "properties": {
+        "project_id": { "$ref": "#/definitions/ID" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "created_at": { "$ref": "#/definitions/ISODateTime" },
+        "updated_at": { "$ref": "#/definitions/ISODateTime" },
+        "owner_user_id": { "$ref": "#/definitions/ID" },
+        "target": {
+          "type": "object",
+          "required": ["duration_s", "ratio"],
+          "properties": {
+            "duration_s": { "type": "number", "minimum": 30, "maximum": 180 },
+            "ratio": { "$ref": "#/definitions/Ratio" },
+            "fps": { "type": "integer", "minimum": 12, "maximum": 60, "default": 24 },
+            "shot_count_hint": { "type": "object", "properties": { "min": { "type": "integer" }, "max": { "type": "integer" } } }
+          }
+        },
+        "style_preset_id": { "$ref": "#/definitions/ID" },
+        "bible": { "$ref": "#/definitions/Bible" },
+        "shots": { "type": "array", "items": { "$ref": "#/definitions/Shot" }, "default": [] },
+        "revisions": { "type": "array", "items": { "$ref": "#/definitions/Revision" }, "default": [] },
+        "status": { "$ref": "#/definitions/Status", "default": "draft" },
+        "tags": { "type": "array", "items": { "type": "string" }, "default": [] }
+      }
+    },
+
+    "Bible": {
+      "type": "object",
+      "required": ["characters", "scenes", "props"],
+      "properties": {
+        "characters": { "type": "array", "items": { "$ref": "#/definitions/CharacterAsset" }, "default": [] },
+        "scenes": { "type": "array", "items": { "$ref": "#/definitions/SceneAsset" }, "default": [] },
+        "props": { "type": "array", "items": { "$ref": "#/definitions/PropAsset" }, "default": [] },
+        "global_rules": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "forbidden": { "type": "array", "items": { "type": "string" }, "default": [] }
+      }
+    },
+
+    "AssetBase": {
+      "type": "object",
+      "required": ["asset_id", "name", "created_at"],
+      "properties": {
+        "asset_id": { "$ref": "#/definitions/ID" },
+        "name": { "type": "string" },
+        "created_at": { "$ref": "#/definitions/ISODateTime" },
+        "updated_at": { "$ref": "#/definitions/ISODateTime" },
+        "tags": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "locked": { "type": "boolean", "default": false },
+        "notes": { "type": "string" },
+        "refs": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/AssetRef" },
+          "default": []
+        }
+      }
+    },
+
+    "AssetRef": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "enum": ["image", "file", "url"] },
+        "uri": { "type": "string" },
+        "sha256": { "type": "string" },
+        "width": { "type": "integer" },
+        "height": { "type": "integer" }
+      }
+    },
+
+    "CharacterAsset": {
+      "allOf": [
+        { "$ref": "#/definitions/AssetBase" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "character" },
+            "appearance_anchors": { "type": "array", "items": { "type": "string" }, "default": [] },
+            "non_negotiables": { "type": "array", "items": { "type": "string" }, "default": [] },
+            "outfit_variants": { "type": "array", "items": { "type": "string" }, "default": [] },
+            "expression_set": { "type": "array", "items": { "type": "string" }, "default": [] }
+          }
+        }
+      ]
+    },
+
+    "SceneAsset": {
+      "allOf": [
+        { "$ref": "#/definitions/AssetBase" },
+        {
+          "type": "object",
+          "properties": {
+            "type": { "const": "scene" },
+            "lighting_rules": { "type": "array", "items": { "type": "string" }, "default": [] },
+            "color_palette": { "type": "array", "items": { "type": "string" }, "default": [] },
+            "time_of_day": { "type": "string" }
+          }
+        }
+      ]
+    },
+
+    "PropAsset": {
+      "allOf": [
+        { "$ref": "#/definitions/AssetBase" },
+        { "type": "object", "properties": { "type": { "const": "prop" }, "non_negotiables": { "type": "array", "items": { "type": "string" }, "default": [] } } }
+      ]
+    },
+
+    "CameraSpec": {
+      "type": "object",
+      "properties": {
+        "shot_size": { "type": "string", "enum": ["establishing", "wide", "medium", "close", "extreme_close"] },
+        "angle": { "type": "string", "enum": ["eye", "high", "low", "dutch", "over_shoulder"] },
+        "movement": { "type": "string", "enum": ["static", "pan", "tilt", "dolly_in", "dolly_out", "truck", "handheld", "follow"] },
+        "composition": { "type": "string", "enum": ["rule_of_thirds", "centered", "symmetry", "leading_lines", "negative_space"] },
+        "lens_feel": { "type": "string", "enum": ["wide_feel", "normal_feel", "tele_feel"] }
+      }
+    },
+
+    "DialogueLine": {
+      "type": "object",
+      "required": ["type", "text"],
+      "properties": {
+        "type": { "type": "string", "enum": ["dialogue", "vo", "subtitle"] },
+        "speaker_character_id": { "$ref": "#/definitions/ID" },
+        "text": { "type": "string" }
+      }
+    },
+
+    "AudioSpec": {
+      "type": "object",
+      "properties": {
+        "sfx": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "bgm_mood": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+
+    "Shot": {
+      "type": "object",
+      "required": ["shot_id", "order", "duration_s", "status"],
+      "properties": {
+        "shot_id": { "$ref": "#/definitions/ID" },
+        "order": { "type": "integer", "minimum": 1 },
+        "segment": { "type": "string", "enum": ["hook", "setup", "turn", "payoff", "tag"] },
+        "scene_id": { "$ref": "#/definitions/ID" },
+        "character_ids": { "type": "array", "items": { "$ref": "#/definitions/ID" }, "default": [] },
+        "prop_ids": { "type": "array", "items": { "$ref": "#/definitions/ID" }, "default": [] },
+        "intent": { "type": "string", "description": "观众必须看见/理解什么" },
+        "visual_brief": { "type": "string", "description": "可视化画面描述" },
+        "camera": { "$ref": "#/definitions/CameraSpec" },
+        "dialogue": { "type": "array", "items": { "$ref": "#/definitions/DialogueLine" }, "default": [] },
+        "audio": { "$ref": "#/definitions/AudioSpec" },
+        "duration_s": { "type": "number", "minimum": 0.3, "maximum": 15 },
+        "keyframes": { "type": "array", "items": { "$ref": "#/definitions/Keyframe" }, "default": [] },
+        "lock_render_plan": { "type": "boolean", "default": false, "description": "锁定Render Plan（允许重渲染但不允许改计划）" },
+        "lock_image": { "type": "boolean", "default": false, "description": "锁定最终图（禁止重渲染覆盖）" },
+        "locked": { "type": "boolean", "default": false, "description": "兼容字段：等同于 lock_image" },
+        "plan_status": { "type": "string", "enum": ["none", "queued", "running", "succeeded", "failed"], "default": "none" },
+        "render_status": { "type": "string", "enum": ["none", "queued", "running", "succeeded", "failed"], "default": "none" },
+        "last_plan_revision_id": { "$ref": "#/definitions/ID" },
+        "last_render_revision_id": { "$ref": "#/definitions/ID" },
+        "status": { "$ref": "#/definitions/Status" },
+        "notes": { "type": "string" }
+      }
+    },
+
+    "Keyframe": {
+      "type": "object",
+      "required": ["keyframe_id", "type", "status"],
+      "properties": {
+        "keyframe_id": { "$ref": "#/definitions/ID" },
+        "type": { "type": "string", "enum": ["main", "start", "middle", "end"] },
+
+        "image_ref": { "$ref": "#/definitions/AssetRef", "description": "渲染完成后的图片引用" },
+
+        "render_plan": {
+          "type": "object",
+          "description": "两段式：Planner输出的Render Plan（可用于Renderer出图与复现）",
+          "properties": {
+            "prompt": { "type": "string" },
+            "negative_prompt": { "type": "string" },
+            "ref_plan": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": "object",
+                "required": ["asset_id", "role"],
+                "properties": {
+                  "asset_id": { "$ref": "#/definitions/ID" },
+                  "role": { "type": "string", "enum": ["character_face", "character_outfit", "scene", "style", "prop"] },
+                  "strength": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "priority": { "type": "integer", "minimum": 1 },
+                  "purpose": { "type": "string" }
+                }
+              }
+            },
+            "consistency_mode": { "type": "string", "enum": ["strict_character", "balanced", "fast_draft"] },
+            "render_mode": { "type": "string", "enum": ["draft", "final"] },
+            "size": { "type": "object", "properties": { "width": { "type": "integer" }, "height": { "type": "integer" } } },
+            "retry_plan": { "type": "object", "additionalProperties": true }
+          }
+        },
+
+        "planner": {
+          "type": "object",
+          "description": "Planner调用元数据（Gemini）",
+          "properties": {
+            "provider": { "type": "string", "default": "gemini" },
+            "model": { "type": "string" },
+            "trace_id": { "type": "string" },
+            "revision_id": { "$ref": "#/definitions/ID" }
+          }
+        },
+        "renderer": {
+          "type": "object",
+          "description": "Renderer调用元数据（Gemini）",
+          "properties": {
+            "provider": { "type": "string", "default": "gemini" },
+            "model": { "type": "string" },
+            "trace_id": { "type": "string" },
+            "seed": { "type": "string" },
+            "revision_id": { "$ref": "#/definitions/ID" }
+          }
+        },
+
+        "status": { "$ref": "#/definitions/Status" }
+      }
+    },
+
+    "Revision": {
+      "type": "object",
+      "required": ["revision_id", "created_at", "type"],
+      "properties": {
+        "revision_id": { "$ref": "#/definitions/ID" },
+        "created_at": { "$ref": "#/definitions/ISODateTime" },
+        "created_by": { "$ref": "#/definitions/ID" },
+        "type": { "type": "string", "enum": ["bible_generate", "shotlist_generate", "keyframe_generate", "bulk_update", "manual_edit", "export"] },
+        "input": { "type": "object", "additionalProperties": true },
+        "output": { "type": "object", "additionalProperties": true },
+        "metrics": { "type": "object", "additionalProperties": true },
+        "notes": { "type": "string" }
+      }
+    }
+  },
+  "properties": {
+    "project": { "$ref": "#/definitions/Project" }
+  },
+  "required": ["project"]
+}
